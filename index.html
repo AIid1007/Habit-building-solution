@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Framework Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Serif&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #F0EDE6;
+  --fg: #1A1A1A;
+  --accent: #D64000;
+  --accent2: #0057FF;
+  --muted: #8A8579;
+  --card-bg: #FFFFFF;
+  --border: #1A1A1A;
+  --success: #1B7340;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.noise {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* HEADER */
+.header {
+  margin-bottom: 60px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--fg);
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.header h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(48px, 8vw, 72px);
+  line-height: 0.95;
+  letter-spacing: -2px;
+}
+
+.header-issue {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.6;
+}
+
+.header-sub {
+  font-size: 15px;
+  color: var(--muted);
+  max-width: 480px;
+  line-height: 1.6;
+}
+
+/* STEPS */
+.step { display: none; }
+.step.active { display: block; animation: fadeUp 0.5s ease; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.step-indicator {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-indicator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.3;
+}
+
+.step h2 {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(28px, 5vw, 40px);
+  margin-bottom: 8px;
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+
+.step-desc {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+/* TEXT INPUT */
+.input-area {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.input-area textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  color: var(--fg);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-area textarea:focus {
+  border-color: var(--accent);
+}
+
+.input-area textarea::placeholder {
+  color: var(--muted);
+}
+
+.char-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  margin-top: 6px;
+}
+
+/* OPTIONS */
+.options-grid {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.option-card {
+  padding: 18px 20px;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  user-select: none;
+}
+
+.option-card:hover {
+  background: var(--fg);
+  color: var(--bg);
+  transform: translateX(4px);
+}
+
+.option-card.selected {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.option-card .opt-icon {
+  font-size: 20px;
+  width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.option-card .opt-text {
+  flex: 1;
+}
+
+.option-card .opt-label {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.option-card .opt-sub {
+  font-size: 12px;
+  opacity: 0.6;
+  line-height: 1.4;
+}
+
+.option-card:hover .opt-sub,
+.option-card.selected .opt-sub {
+  opacity: 0.7;
+}
+
+/* BUTTONS */
+.btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 16px 32px;
+  border: 2px solid var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--fg);
+}
+
+.btn-outline:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* PROGRESS BAR */
+.progress-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 40px;
+}
+
+.progress-seg {
+  height: 3px;
+  flex: 1;
+  background: var(--border);
+  opacity: 0.15;
+  transition: all 0.4s ease;
+}
+
+.progress-seg.filled {
+  opacity: 1;
+  background: var(--accent);
+}
+
+.progress-seg.current {
+  opacity: 0.4;
+  background: var(--accent);
+}
+
+/* RESULT */
+.result-section {
+  margin-bottom: 48px;
+  animation: fadeUp 0.6s ease both;
+}
+
+.result-section:nth-child(2) { animation-delay: 0.1s; }
+.result-section:nth-child(3) { animation-delay: 0.2s; }
+.result-section:nth-child(4) { animation-delay: 0.3s; }
+.result-section:nth-child(5) { animation-delay: 0.4s; }
+
+.result-num {
+  font-family: 'Instrument Serif', serif;
+  font-size: 64px;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+  opacity: 0.3;
+}
+
+.result-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(24px, 4vw, 32px);
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
+}
+
+.result-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+.result-body {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--fg);
+  opacity: 0.85;
+}
+
+.result-body strong {
+  color: var(--fg);
+  opacity: 1;
+  font-weight: 600;
+}
+
+.result-callout {
+  border-left: 3px solid var(--accent);
+  padding: 16px 20px;
+  margin: 16px 0;
+  background: rgba(214, 64, 0, 0.04);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.result-divider {
+  height: 1px;
+  background: var(--fg);
+  opacity: 0.1;
+  margin: 48px 0;
+}
+
+/* TRAP CARD */
+.trap-card {
+  border: 2px solid var(--border);
+  padding: 20px 24px;
+  margin: 12px 0;
+  background: var(--card-bg);
+}
+
+.trap-card .trap-header {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.trap-card p {
+  font-size: 14px;
+  line-height: 1.7;
+  opacity: 0.85;
+}
+
+/* FOOTER */
+.footer {
+  border-top: 2px solid var(--fg);
+  padding-top: 24px;
+  margin-top: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 520px) {
+  .container { padding: 24px 16px; }
+  .header-top { flex-direction: column; gap: 8px; }
+  .header-issue { text-align: left; }
+  .btn { width: 100%; justify-content: center; }
+  .btn-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="container">
+  <header class="header">
+    <div class="header-top">
+      <h1>The<br>Framework<br>Engine</h1>
+      <div class="header-issue">Identity → System<br>→ Action → Recovery<br>Vol. 01</div>
+    </div>
+    <p class="header-sub">Tell us what you're struggling with. We'll build you a real system — not motivation porn, not a to-do list. A framework built for your worst days.</p>
+  </header>
+
+  <div class="progress-bar" id="progress"></div>
+
+  <!-- STEP 1: Free text -->
+  <div class="step active" id="step1">
+    <div class="step-indicator">Step 01 / 05</div>
+    <h2>What's the struggle?</h2>
+    <p class="step-desc">Describe it however you want. "I can't stick to exercise." "I want to learn guitar but never practice." "I keep meaning to save money." Anything.</p>
+    <div class="input-area">
+      <textarea id="problemInput" placeholder="I want to... but I always end up..." maxlength="300"></textarea>
+      <div class="char-count"><span id="charCount">0</span> / 300</div>
+    </div>
+    <button class="btn" id="btn1" disabled>Next →</button>
+  </div>
+
+  <!-- STEP 2: Domain detection + confirm -->
+  <div class="step" id="step2">
+    <div class="step-indicator">Step 02 / 05</div>
+    <h2>What territory is this?</h2>
+    <p class="step-desc">Pick the one that fits closest. This shapes the kind of system we build.</p>
+    <div class="options-grid" id="domainOptions"></div>
+    <button class="btn" id="btn2" disabled>Next →</button>
+  </div>
+
+  <!-- STEP 3: Main blocker -->
+  <div class="step" id="step3">
+    <div class="step-indicator">Step 03 / 05</div>
+    <h2>What actually stops you?</h2>
+    <p class="step-desc">Be honest. Not what sounds reasonable — what actually happens when you fail.</p>
+    <div class="options-grid" id="blockerOptions"></div>
+    <button class="btn" id="btn3" disabled>Next →</button>
+  </div>
+
+  <!-- STEP 4: Failure pattern -->
+  <div class="step" id="step4">
+    <div class="step-indicator">Step 04 / 05</div>
+    <h2>How does it usually fall apart?</h2>
+    <p class="step-desc">Think about the last time you tried something similar. What was the pattern?</p>
+    <div class="options-grid" id="patternOptions"></div>
+    <button class="btn" id="btn4" disabled>Next →</button>
+  </div>
+
+  <!-- STEP 5: Energy -->
+  <div class="step" id="step5">
+    <div class="step-indicator">Step 05 / 05</div>
+    <h2>When do you have juice?</h2>
+    <p class="step-desc">When in the day does your brain cooperate the most?</p>
+    <div class="options-grid" id="energyOptions"></div>
+    <button class="btn" id="btn5" disabled>Build My Framework →</button>
+  </div>
+
+  <!-- RESULT -->
+  <div class="step" id="result"></div>
+</div>
+
+<script>
+const state = { problem: '', domain: '', blocker: '', pattern: '', energy: '' };
+let currentStep = 1;
+
+const domains = [
+  { id: 'health', icon: '◉', label: 'Body & Health', sub: 'Exercise, eating, sleep, movement' },
+  { id: 'learning', icon: '◈', label: 'Learning & Skills', sub: 'Reading, studying, new abilities' },
+  { id: 'creative', icon: '◐', label: 'Creative Work', sub: 'Writing, art, music, building things' },
+  { id: 'career', icon: '▣', label: 'Career & Work', sub: 'Productivity, projects, growth' },
+  { id: 'financial', icon: '◇', label: 'Money & Financial', sub: 'Saving, investing, spending habits' },
+  { id: 'social', icon: '◎', label: 'Social & Relationships', sub: 'Connecting, boundaries, communication' },
+];
+
+const blockers = [
+  { id: 'time', icon: '⏱', label: "I don't have time", sub: "Life is packed, there's no room" },
+  { id: 'motivation', icon: '⚡', label: "I lose motivation fast", sub: "Excited at first, then nothing" },
+  { id: 'focus', icon: '◌', label: "I can't focus long enough", sub: "Brain won't cooperate" },
+  { id: 'fear', icon: '▽', label: "Fear or perfectionism", sub: "Can't start unless it's perfect" },
+  { id: 'environment', icon: '⌂', label: "My environment fights me", sub: "People, space, or setup works against me" },
+  { id: 'overwhelm', icon: '▓', label: "It feels too big", sub: "Don't know where to start" },
+];
+
+const patterns = [
+  { id: 'strong_start', icon: '↗', label: "Strong start, quick fade", sub: "Week 1 is great, week 3 is gone" },
+  { id: 'never_start', icon: '⊘', label: "I never actually start", sub: "I plan, I think, I don't do" },
+  { id: 'inconsistent', icon: '↝', label: "Wildly inconsistent", sub: "Some days amazing, most days nothing" },
+  { id: 'all_or_nothing', icon: '⬒', label: "All or nothing", sub: "If I can't do it perfectly, I do zero" },
+];
+
+const energies = [
+  { id: 'morning', icon: '☀', label: "Morning person", sub: "Best before noon" },
+  { id: 'evening', icon: '☽', label: "Night owl", sub: "I come alive after dark" },
+  { id: 'unpredictable', icon: '~', label: "Totally unpredictable", sub: "Changes day to day" },
+  { id: 'afternoon', icon: '◑', label: "Afternoon window", sub: "Best between 1-5 PM" },
+];
+
+function renderOptions(containerId, items, stateKey, btnId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'option-card';
+    div.innerHTML = `<span class="opt-icon">${item.icon}</span><div class="opt-text"><div class="opt-label">${item.label}</div><div class="opt-sub">${item.sub}</div></div>`;
+    div.onclick = () => {
+      container.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      div.classList.add('selected');
+      state[stateKey] = item.id;
+      document.getElementById(btnId).disabled = false;
+    };
+    container.appendChild(div);
+  });
+}
+
+function updateProgress() {
+  const bar = document.getElementById('progress');
+  bar.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'progress-seg' + (i < currentStep ? ' filled' : i === currentStep ? ' current' : '');
+    bar.appendChild(seg);
+  }
+}
+
+function goToStep(n) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.getElementById(n === 6 ? 'result' : `step${n}`).classList.add('active');
+  currentStep = n;
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Step 1
+const ta = document.getElementById('problemInput');
+const cc = document.getElementById('charCount');
+ta.addEventListener('input', () => {
+  cc.textContent = ta.value.length;
+  document.getElementById('btn1').disabled = ta.value.trim().length < 5;
+});
+document.getElementById('btn1').onclick = () => { state.problem = ta.value.trim(); goToStep(2); };
+
+// Step 2-5
+renderOptions('domainOptions', domains, 'domain', 'btn2');
+renderOptions('blockerOptions', blockers, 'blocker', 'btn3');
+renderOptions('patternOptions', patterns, 'pattern', 'btn4');
+renderOptions('energyOptions', energies, 'energy', 'btn5');
+
+document.getElementById('btn2').onclick = () => goToStep(3);
+document.getElementById('btn3').onclick = () => goToStep(4);
+document.getElementById('btn4').onclick = () => goToStep(5);
+document.getElementById('btn5').onclick = () => generateResult();
+
+updateProgress();
+
+// ========== THE ENGINE ==========
+
+function generateResult() {
+  const { problem, domain, blocker, pattern, energy } = state;
+
+  const identityMap = {
+    health: "someone who moves their body as a non-negotiable part of the day",
+    learning: "a person who feeds their mind daily, even in small doses",
+    creative: "a maker — someone who creates regularly, not just when inspired",
+    career: "a professional who does the hard work first, not just the urgent work",
+    financial: "someone who makes intentional choices with money, every single time",
+    social: "a person who invests in their relationships with real, consistent action",
+  };
+
+  const identityProblemVerb = {
+    health: "takes care of their body",
+    learning: "learns something new",
+    creative: "makes things",
+    career: "does focused, meaningful work",
+    financial: "handles money with intention",
+    social: "shows up for people",
+  };
+
+  // SYSTEM — varies by blocker × domain × energy
+  const systemByBlocker = {
+    time: {
+      core: `Your "no time" is real, but it's also a sorting problem. You have pockets — you're just not seeing them because you're looking for a big block that doesn't exist. The system: <strong>attach the action to something you already do.</strong> You eat, commute, wait, scroll. One of those windows is where your new habit lives.`,
+      envSetup: {
+        morning: "The night before, set out everything you need so the morning version of you just has to show up and start. No decisions, no searching.",
+        evening: "Right after dinner, your setup activates. Whatever tool or space you need is already open, already ready. You removed the activation cost before your energy dips.",
+        afternoon: "Use your lunch break transition. The five minutes between eating and going back to work — that's your window. Keep everything accessible on your phone or in your bag.",
+        unpredictable: "Keep a go-bag version of your habit. Physical book in your bag, app on your home screen, notebook in your pocket. When a random window opens, you're already loaded.",
+      }
+    },
+    motivation: {
+      core: `Motivation is a feeling, not a strategy. You've been waiting to feel like doing it. That feeling comes <em>after</em> you start, not before. The system: <strong>make starting so trivially easy that motivation becomes irrelevant.</strong> You don't need to feel like brushing your teeth — you just do it because it's frictionless.`,
+      envSetup: {
+        morning: "Put the thing you need to do literally in your path. Book on the pillow. Gym shoes by the door. The first thing you see when you wake up is the cue — not your phone.",
+        evening: "Create a shutdown ritual at work, then a startup ritual for your habit. Close laptop → make tea → sit in the spot → begin. The ritual replaces the need for motivation.",
+        afternoon: "Set a single alarm labeled with just one word — the action, not the goal. Not 'work out' but 'shoes on.' Your afternoon brain responds to simple commands.",
+        unpredictable: "Use the 'if-then' rule: if you notice you're scrolling aimlessly, then you switch to the habit for 5 minutes. You're hijacking the dead time your brain was wasting anyway.",
+      }
+    },
+    focus: {
+      core: `Your focus isn't broken — it's just allocated differently. Brains like yours don't do sustained attention on demand, they do <strong>bursts</strong>. The system: work in absurdly short intervals. Not 25-minute pomodoros — that's still too long. Try 10 minutes. Maybe 5. One burst, then permission to stop.`,
+      envSetup: {
+        morning: "Morning focus is your cleanest window. Protect it fiercely. Phone in another room. No 'just checking one thing.' Go straight from waking up to the action. Even 5 minutes of undistracted effort before the world gets noisy is worth more than an hour later.",
+        evening: "Your brain is already tired, which paradoxically helps — you don't have the energy to resist the habit. Make the environment cozy and low-stimulation. One task, one screen, dim lights, no multitasking.",
+        afternoon: "Post-lunch brain fog is real. Don't fight it with caffeine. Use it: your defenses are down, so a simple, physical version of the habit slides in easier. Reading? Hold a physical book. Creating? Use paper, not a screen.",
+        unpredictable: "Keep the habit portable and interruptible. You need to be able to start in 10 seconds and stop without penalty. No setup, no cleanup. The lower the activation energy, the more windows you'll actually use.",
+      }
+    },
+    fear: {
+      core: `Perfectionism disguises itself as high standards. It's actually a protection mechanism — if you never start, you never fail. The system: <strong>give yourself permission to do it badly.</strong> A terrible first draft exists. A perfect blank page doesn't. The bar isn't quality, it's existence.`,
+      envSetup: {
+        morning: "Start before you're fully awake. Seriously. The critical voice in your head isn't fully online yet at 6 AM. Do the shitty version while the perfectionist is still sleeping.",
+        evening: "Make it a 'throwaway' session. Tell yourself explicitly: this one doesn't count, it's just practice. Removing the stakes removes the paralysis. Ironically, the 'throwaway' work is often your best.",
+        afternoon: "Pair it with something comforting. Music, a good drink, a favorite spot. You're building a positive association with the act of starting, which is what perfectionism has poisoned.",
+        unpredictable: "Keep a 'garbage file' or 'garbage session' — a designated place for bad work. When a window opens, you dump into the garbage file. No pressure, no quality bar. You'll be amazed how much usable work comes out of it.",
+      }
+    },
+    environment: {
+      core: `Your environment is winning the fight against your intentions. Every day, your space, your people, or your setup makes the wrong behavior easier than the right one. The system: <strong>redesign the environment so the desired action is the default.</strong> Don't add willpower — remove friction.`,
+      envSetup: {
+        morning: "Prepare the space the night before. Your environment should look like someone who already does this habit just stepped out for coffee. Everything placed, everything ready. You walk in and start.",
+        evening: "Create a physical boundary. A specific corner, chair, or table that's ONLY for this. When you sit there, your brain knows what happens. No phone, no other activity. It's a sacred zone.",
+        afternoon: "If people are the friction, use headphones as a social force field. If space is the problem, go somewhere else — a library, a park bench, a parked car. Change the container, change the behavior.",
+        unpredictable: "Build a mobile version of your ideal environment. A tote bag with everything you need, a playlist that signals 'focus mode,' a phone shortcut that opens only what you need. Your environment travels with you.",
+      }
+    },
+    overwhelm: {
+      core: `The goal is so big it's become a wall instead of a direction. Your brain sees the entire mountain and freezes. The system: <strong>you are only ever doing the next small thing.</strong> Not the project. Not the goal. The next thing that takes under 10 minutes. That's your entire universe.`,
+      envSetup: {
+        morning: "Write down ONE thing the night before. Just one. Stick it where you'll see it first thing. That's the only thing that exists tomorrow morning. Everything else is future-you's problem.",
+        evening: "End your workday by writing tomorrow's one thing. Then in the evening, your only job is the tiniest version of your habit. The list is already done. You're just executing one item.",
+        afternoon: "When overwhelm hits mid-day, zoom in absurdly far. What's the next physical action? Not 'work on the project' but 'open the file.' Not 'get healthy' but 'fill the water bottle.' Stupidly small. Do that.",
+        unpredictable: "Keep a running list of 'next tiny actions' — each one under 5 minutes. When a random window appears, grab one off the list. You never have to think about what to do, just pick and go.",
+      }
+    },
+  };
+
+  // MVA — varies by domain × blocker
+  const mvaMap = {
+    health: {
+      time: "Put on your shoes and step outside. That's it. One minute of fresh air. Most days you'll walk further, but the commitment is just: shoes, door, outside.",
+      motivation: "Do one rep of anything. One pushup, one stretch, one minute of walking. The 'one' is the point — it proves you showed up.",
+      focus: "Move for 5 minutes to a song you like. One song. When it ends, you can stop. Your brain gets the dopamine from the music AND the movement.",
+      fear: "Do the easiest version of exercise that exists. A slow walk. Gentle stretching. You're not training for anything — you're just teaching your body that movement isn't a performance.",
+      environment: "Find one spot where you can move without anyone watching or judging. A room, a path, anywhere. Go there and do anything physical for 3 minutes.",
+      overwhelm: "Touch your toes. Seriously. Stand up, reach down, touch your toes. That's your MVA. Everything else is bonus.",
+    },
+    learning: {
+      time: "Read one page. Listen to one minute of a podcast. Watch one explanation video at 1.5x speed. Micro-learning still compounds.",
+      motivation: "Open the book or app and read one paragraph. Not a chapter. Not a page. One paragraph. The starting is the habit, not the amount.",
+      focus: "Read for exactly one page, then stop. Put a physical bookmark in. Tomorrow, one more page. Short bursts with clear endpoints work for your brain.",
+      fear: "Learn something you're allowed to be bad at. Use a beginner resource with zero shame. Your MVA: look up one thing you're curious about. No notes, no retention goal.",
+      environment: "Put the learning material where your phone usually lives. When you reach for the scroll, you find the book instead.",
+      overwhelm: "Learn one fact or concept. Just one. Write it on a sticky note. Stick it on your wall. Tomorrow, one more. You're building a mosaic, not reading an encyclopedia.",
+    },
+    creative: {
+      time: "Create for 5 minutes using a timer. When it rings, you can stop guilt-free. The constraint actually helps — limitations breed creativity.",
+      motivation: "Open your creative tool and make one mark, one line, one sentence. Not a good one. Just one. The blank page is the enemy; any mark defeats it.",
+      focus: "Work in 10-minute bursts with a timer visible. When your brain drifts, that's not failure — set the timer again and do another burst.",
+      fear: "Create something with the explicit intention of deleting it. A throwaway sketch, a draft you'll trash. Removing the stakes removes the block.",
+      environment: "Designate one small physical space as your creation zone. Even a corner of a table. Only creative tools live there. Sit down, make one thing.",
+      overwhelm: "Forget the big project. Make something tiny and finished. A doodle, not a painting. A haiku, not a novel. Four bars, not a symphony. Finished things build momentum.",
+    },
+    career: {
+      time: "Spend 5 minutes on the ONE task that actually moves the needle, before checking email or messages. Five minutes of real work before reactive work.",
+      motivation: "Open the project file and fix one small thing. A typo, a formatting issue, anything. You're inside the work now — continuing is easier than starting was.",
+      focus: "Work in 15-minute blocks with a clear micro-goal for each block. 'Write the intro paragraph.' 'Fix the header layout.' Tiny scope, full focus.",
+      fear: "Do the worst possible version of the task. Write the terrible first draft. Make the ugly prototype. Ship the imperfect thing. Existing beats hypothetical every time.",
+      environment: "Change your physical position when it's time for deep work. Different desk, different room, different coffee shop. The context switch tells your brain: different mode now.",
+      overwhelm: "Pick the smallest subtask that would make you feel like you made progress. Not the most important one. The smallest. Do only that.",
+    },
+    financial: {
+      time: "Check your balance once. That's the habit. One glance at where your money is. Awareness is the first system — everything else builds on it.",
+      motivation: "Move one dollar to savings. Literally one. The amount is irrelevant. The behavior is what you're training.",
+      focus: "Spend 2 minutes reviewing your last 3 transactions. That's it. Are they things you'd choose again? No spreadsheet, no budget. Just noticing.",
+      fear: "Look at one number you've been avoiding. Just look at it. Don't fix it, don't plan around it. Break the avoidance loop by simply seeing it.",
+      environment: "Remove one spending trigger from your environment. Unsubscribe from one store email. Delete one shopping app. Remove one saved credit card from a website.",
+      overwhelm: "Automate one small thing. Set up a $5/week auto-transfer to savings. One decision now, zero effort forever. Then forget about it and do the next one later.",
+    },
+    social: {
+      time: "Send one message to one person you care about. Not a long one. 'Thinking of you' or 'saw this and thought of you.' Ten seconds.",
+      motivation: "Reply to one message you've been ignoring. Just one. The guilt of not replying is heavier than the reply itself.",
+      focus: "Have one 5-minute conversation with full attention. Phone down, eye contact, actually listen. Five minutes of presence beats an hour of distracted hanging out.",
+      fear: "Say one honest thing to someone today. Not a big revelation — a small truth. 'I've been stressed.' 'I appreciated that.' Micro-vulnerability builds the muscle.",
+      environment: "Put one recurring hangout on the calendar. A weekly walk, a monthly dinner. Automate the social act so it doesn't depend on you initiating every time.",
+      overwhelm: "Pick one person. Just one. Focus all your social energy there for now. You're not rebuilding your entire social life — you're watering one plant.",
+    },
+  };
+
+  // RECOVERY — varies by pattern
+  const recoveryMap = {
+    strong_start: {
+      rule: "When you hit Week 2 and the excitement fades, that's not failure — that's the real starting line. The honeymoon is over. Now you're actually building the habit. Expect the dip and plan for it: Week 2 is when you DROP to your MVA and stay there. No ambition. Just showing up.",
+      trap: { name: "The 'I need to level up' trap", desc: "In Week 1 you did great, so in Week 2 you try to do MORE. This is exactly what kills you. When the novelty wears off, reduce the dose, don't increase it. Intensity is the enemy of consistency at this stage." },
+    },
+    never_start: {
+      rule: "Your recovery protocol is actually a STARTING protocol. The rule: do the MVA within 3 seconds of thinking about it. Don't give your brain time to negotiate. Thought → action. The gap between thinking and doing is where you lose every time. Shrink the gap to nothing.",
+      trap: { name: "The 'I need to plan more first' trap", desc: "You're using planning as a substitute for doing. The plan is done — it's this framework. There's nothing left to figure out. The next step is not another brainstorm session. It's the MVA, done badly, right now." },
+    },
+    inconsistent: {
+      rule: "Stop counting streaks. Streaks punish inconsistency by making every break feel like a reset. Instead, count TOTAL days this month. 12 out of 30 is incredible. That's 12 more than zero. A scattered 12 is worth more than a perfect 7 followed by 23 days of nothing.",
+      trap: { name: "The 'I missed yesterday so today is ruined' trap", desc: "Your brain bundles days into streaks and then judges the bundle. Unbundle them. Today is its own day. It has nothing to do with yesterday. Walk in fresh every morning." },
+    },
+    all_or_nothing: {
+      rule: "Your recovery protocol is THE most important part for you. The rule: the MVA on a bad day is MORE valuable than a perfect session on a good day. Because the bad-day MVA is the one that actually rewires your all-or-nothing pattern. It teaches your brain that partial counts. That 10% effort is infinitely more than 0%.",
+      trap: { name: "The 'it doesn't count if I only did the minimum' trap", desc: "It counts the most. Your perfectionism tells you a 5-minute session is worthless compared to an hour. Your perfectionism is wrong. The 5-minute session is the one that breaks the cycle. That's the rep that matters." },
+    },
+  };
+
+  // ASSEMBLE
+  const identity = identityMap[domain];
+  const verb = identityProblemVerb[domain];
+  const sys = systemByBlocker[blocker];
+  const envTip = sys.envSetup[energy];
+  const mva = mvaMap[domain][blocker];
+  const recovery = recoveryMap[pattern];
+
+  const energyLabel = { morning: 'morning', evening: 'evening', afternoon: 'afternoon', unpredictable: 'whenever a random window opens' }[energy];
+
+  const resultHTML = `
+    <div class="result-section">
+      <div class="result-num">01</div>
+      <div class="result-label">Your New Identity</div>
+      <div class="result-title">Who you're becoming</div>
+      <div class="result-body">
+        <p>You wrote: <em>"${problem}"</em></p>
+        <p style="margin-top:12px">Forget that as a goal. Instead, you're becoming <strong>${identity}.</strong></p>
+        <p style="margin-top:12px">Every time you do even the tiniest action, you're casting a vote for being a person who ${verb}. You're not chasing a finish line. You're accumulating evidence of who you are. The actions come first. The belief follows.</p>
+      </div>
+    </div>
+
+    <div class="result-divider"></div>
+
+    <div class="result-section">
+      <div class="result-num">02</div>
+      <div class="result-label">Your System</div>
+      <div class="result-title">Built for your worst day</div>
+      <div class="result-body">
+        <p>${sys.core}</p>
+        <div class="result-callout" style="margin-top:16px">
+          <strong>Your setup (for a ${energy === 'unpredictable' ? 'n unpredictable' : energy}-energy brain):</strong><br>${envTip}
+        </div>
+      </div>
+    </div>
+
+    <div class="result-divider"></div>
+
+    <div class="result-section">
+      <div class="result-num">03</div>
+      <div class="result-label">Minimum Viable Action</div>
+      <div class="result-title">So small it's embarrassing to skip</div>
+      <div class="result-body">
+        <p><strong>${mva}</strong></p>
+        <p style="margin-top:12px">This is your daily non-negotiable. Not the ideal session. Not the productive version. This is what you do when everything sucks, you're exhausted, the day was terrible, and you want to quit. If you do this one thing — ${energyLabel} — you showed up. Vote cast. That's a win.</p>
+        <p style="margin-top:12px">On good days, you'll do more. Let yourself. But never raise the bar. The MVA stays embarrassingly small forever. That's the point.</p>
+      </div>
+    </div>
+
+    <div class="result-divider"></div>
+
+    <div class="result-section">
+      <div class="result-num">04</div>
+      <div class="result-label">Recovery Protocol</div>
+      <div class="result-title">When you fall off</div>
+      <div class="result-body">
+        <p>You will miss days. That's not a prediction — it's a certainty. Here's your rule:</p>
+        <p style="margin-top:12px">${recovery.rule}</p>
+        <div class="trap-card" style="margin-top:20px">
+          <div class="trap-header">⚠ ${recovery.trap.name}</div>
+          <p>${recovery.trap.desc}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-divider"></div>
+
+    <div class="footer">
+      <span>The Framework Engine</span>
+      <button class="btn btn-outline" onclick="location.reload()">Start Over ↺</button>
+    </div>
+  `;
+
+  document.getElementById('result').innerHTML = resultHTML;
+  goToStep(6);
+}
+</script>
+</body>
+</html>
